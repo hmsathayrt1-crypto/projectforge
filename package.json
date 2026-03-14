@@ -1,0 +1,21 @@
+{
+  "name": "projectforge",
+  "version": "1.0.0",
+  "description": "Smart platform for graduation project recommendations and planning",
+  "scripts": {
+    "dev": "wrangler pages dev public --compatibility-date=2024-01-01 -- npm run dev:frontend",
+    "dev:frontend": "vite",
+    "build": "vite build",
+    "deploy": "wrangler pages deploy public",
+    "deploy:worker": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.12.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240403.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "wrangler": "^3.114.17"
+  }
+}
