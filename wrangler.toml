@@ -2,14 +2,10 @@ name = "projectforge"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "public"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "projectforge-db"
-database_id = "will-create"
-
+# Using existing KV namespace from flutter-auth-api
 [[kv_namespaces]]
 binding = "KV"
-id = "will-create"
+id = "c73fae8bb0804801b6f23be7e84babe0"
 
 [ai]
 binding = "AI"
