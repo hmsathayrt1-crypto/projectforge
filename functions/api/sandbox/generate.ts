@@ -190,7 +190,7 @@ export async function onRequestPost(context: any) {
             'Authorization': `Bearer ${context.env.NANOGPT_API_KEY}`
           },
           body: JSON.stringify({
-            model: 'kimi-k2.5',
+            model: 'moonshotai/kimi-k2.5',
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 1500
