@@ -24,22 +24,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initApp() {
-    // Check if user is logged in
-    if (authToken) {
-        await fetchCurrentUser();
+    try {
+        // Check if user is logged in
+        if (authToken) {
+            try {
+                await fetchCurrentUser();
+            } catch (e) {
+                console.warn('Could not fetch user:', e);
+            }
+        }
+        
+        // Load initial data with fallback
+        try {
+            await Promise.all([
+                loadSkills(),
+                loadProjects()
+            ]);
+        } catch (e) {
+            console.warn('Could not load initial data:', e);
+            // Continue anyway - use mock data
+        }
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Update UI based on auth state
+        updateAuthUI();
+    } catch (error) {
+        console.error('App initialization error:', error);
+        // Still setup event listeners even if there's an error
+        setupEventListeners();
+        updateAuthUI();
     }
-    
-    // Load initial data
-    await Promise.all([
-        loadSkills(),
-        loadProjects()
-    ]);
-    
-    // Setup event listeners
-    setupEventListeners();
-    
-    // Update UI based on auth state
-    updateAuthUI();
 }
 
 // ============================================
