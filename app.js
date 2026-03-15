@@ -1388,6 +1388,4 @@ if (localStorage.getItem('theme') === 'light') {
     document.body.dataset.theme = 'light';
     document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
 }
-
-// Initialize
-initApp();
+// Note: initApp() is called in DOMContentLoaded handler above - no duplicate call needed here
