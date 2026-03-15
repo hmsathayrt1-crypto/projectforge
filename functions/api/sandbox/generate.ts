@@ -169,8 +169,44 @@ export async function onRequestPost(context: any) {
     );
 
     const adjustedDuration = Math.round(project.estimated_duration_weeks * (1 + skillGap.length * 0.1));
-    const milestones = generateMilestones(project, adjustedDuration, skillGap);
-    const risks = generateRisks(project, skillGap);
+    let milestones = generateMilestones(project, adjustedDuration, skillGap);
+    let risks = generateRisks(project, skillGap);
+    let ai_analysis = "";
+
+    // If NanoGPT API key is available, enhance with AI
+    if (context.env.NANOGPT_API_KEY) {
+      try {
+        const prompt = `أنت خبير هندسة برمجيات وتخطيط مشاريع. قم بإنشاء خطة مشروع تخرج بعنوان "${project.title_ar}".
+المتطلبات:
+1. ارسم مخطط UML أو Architecture Diagram باستخدام Mermaid.js (داخل كود بلوك markdown).
+2. قدم نصائح إضافية لتنفيذ المشروع في ${adjustedDuration} أسبوع.
+الفجوة المهارية لدى الطالب: ${skillGap.length > 0 ? skillGap.join(', ') : 'لا يوجد'}.
+اكتب الرد باللغة العربية.`;
+
+        const aiResponse = await fetch('https://nano-gpt.com/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${context.env.NANOGPT_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'kimi-k2.5',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 1500
+          })
+        });
+
+        if (aiResponse.ok) {
+          const aiData = await aiResponse.json();
+          ai_analysis = aiData.choices?.[0]?.message?.content || "";
+        } else {
+          console.warn('AI API Error:', await aiResponse.text());
+        }
+      } catch (err) {
+        console.error('AI call failed:', err);
+      }
+    }
 
     const plan = {
       projectId: project.id,
@@ -181,6 +217,7 @@ export async function onRequestPost(context: any) {
         adjusted: adjustedDuration,
         unit: 'weeks'
       },
+      ai_analysis,
       milestones,
       risks,
       teamRecommendation: {
