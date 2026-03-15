@@ -1,4 +1,5 @@
 // ProjectForge - Sandbox Plan Generator
+import { corsResponse, withCors } from '../_cors';
 
 const PROJECTS_DATA = [
   { id: 1, title: 'E-Commerce Platform', title_ar: 'منصة تجارة إلكترونية', category: 'web', difficulty: 'intermediate', required_skills: ['JavaScript', 'React', 'Node.js', 'SQL', 'Docker'], estimated_duration_weeks: 16, team_size_min: 3, team_size_max: 5 },
@@ -126,7 +127,7 @@ export async function onRequestPost(context: any) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 
@@ -138,7 +139,7 @@ export async function onRequestPost(context: any) {
     if (!project) {
       return new Response(JSON.stringify({ error: 'Project not found' }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
 
@@ -249,13 +250,18 @@ export async function onRequestPost(context: any) {
     }
 
     return new Response(JSON.stringify({ plan }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Sandbox error:', error);
     return new Response(JSON.stringify({ error: 'Failed to generate plan' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
+}
+
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }

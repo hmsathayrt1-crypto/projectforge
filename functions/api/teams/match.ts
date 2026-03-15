@@ -1,4 +1,5 @@
 // ProjectForge - Team Matching API
+import { corsResponse, withCors } from '../_cors';
 
 // Projects data for reference
 const PROJECTS_DATA = [
@@ -16,6 +17,11 @@ const PROJECTS_DATA = [
 
 const SKILL_NAMES = ['Python', 'JavaScript', 'Java', 'C++', 'C#', 'PHP', 'Swift', 'Kotlin', 'React', 'Vue', 'Angular', 'Node.js', 'Django', 'Flask', 'HTML/CSS', 'Flutter', 'React Native', 'Android Native', 'iOS Native', 'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'TensorFlow', 'PyTorch', 'SQL', 'MongoDB', 'PostgreSQL', 'Redis', 'Docker', 'Kubernetes', 'CI/CD', 'AWS', 'Cloudflare', 'Web Security', 'Cryptography', 'Penetration Testing', 'Arduino', 'Raspberry Pi', 'Embedded Systems', 'Project Management', 'Technical Writing', 'Presentation', 'Team Leadership'];
 
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
+}
+
 // GET /api/teams/match
 export async function onRequestGet(context: any) {
   const authHeader = context.request.headers.get('Authorization');
@@ -23,7 +29,7 @@ export async function onRequestGet(context: any) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 
@@ -32,6 +38,7 @@ export async function onRequestGet(context: any) {
   const projectId = parseInt(searchParams.get('projectId') || '0');
   
   const kv = context.env.KV;
+  const project = PROJECTS_DATA.find(p => p.id === projectId);
   
   try {
     // Get current user
@@ -39,20 +46,11 @@ export async function onRequestGet(context: any) {
     if (!userData) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
     const user = JSON.parse(userData);
-    
-    // Get project
-    const project = PROJECTS_DATA.find(p => p.id === projectId);
-    if (!project) {
-      return new Response(JSON.stringify({ error: 'Project not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    }
     
     // Get user skills
     const skillsData = await kv.get(`user_skills:${user.id}`);
@@ -70,17 +68,13 @@ export async function onRequestGet(context: any) {
         const potentialSkills = potentialUser.skills || [];
         const potentialSkillNames = potentialSkills.map((s: any) => SKILL_NAMES[s.skill_id - 1]).filter(Boolean);
         
-        const complementarySkills = project.required_skills.filter((s: string) => 
+        const complementarySkills = project?.required_skills.filter((s: string) => 
           !userSkillNames.includes(s) && potentialSkillNames.includes(s)
-        );
+        ) || [];
         
-        const sharedSkills = project.required_skills.filter((s: string) => 
+        const sharedSkills = project?.required_skills.filter((s: string) => 
           userSkillNames.includes(s) && potentialSkillNames.includes(s)
-        );
-        
-        const missingSkills = project.required_skills.filter((s: string) => 
-          !userSkillNames.includes(s) && !potentialSkillNames.includes(s)
-        );
+        ) || [];
         
         const compatibilityScore = (complementarySkills.length * 2) + (sharedSkills.length * 0.5);
         
@@ -91,7 +85,6 @@ export async function onRequestGet(context: any) {
           major: potentialUser.major,
           complementarySkills,
           sharedSkills,
-          missingSkills,
           compatibilityScore: Math.round(compatibilityScore * 10) / 10
         };
       })
@@ -100,14 +93,11 @@ export async function onRequestGet(context: any) {
     
     return new Response(JSON.stringify({
       projectId,
-      requiredSkills: project.required_skills,
+      requiredSkills: project?.required_skills || [],
       currentUserSkills: userSkillNames,
       matches
     }), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Team match error:', error);
@@ -132,10 +122,16 @@ export async function onRequestGet(context: any) {
       }
     ];
     
-    const user = JSON.parse(await kv.get(`token:${token}`) || '{}');
-    const skillsData = await kv.get(`user_skills:${user.id}`);
-    const userSkills = skillsData ? JSON.parse(skillsData) : [];
-    const userSkillNames = userSkills.map((s: any) => SKILL_NAMES[s.skill_id - 1]).filter(Boolean);
+    let userSkillNames: string[] = [];
+    try {
+      const userData = await kv.get(`token:${token}`);
+      if (userData) {
+        const user = JSON.parse(userData);
+        const skillsData = await kv.get(`user_skills:${user.id}`);
+        const userSkills = skillsData ? JSON.parse(skillsData) : [];
+        userSkillNames = userSkills.map((s: any) => SKILL_NAMES[s.skill_id - 1]).filter(Boolean);
+      }
+    } catch (e) {}
     
     return new Response(JSON.stringify({
       projectId,
@@ -143,21 +139,7 @@ export async function onRequestGet(context: any) {
       currentUserSkills: userSkillNames,
       matches: mockMatches
     }), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
-}
-
-// OPTIONS for CORS
-export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
-  });
 }

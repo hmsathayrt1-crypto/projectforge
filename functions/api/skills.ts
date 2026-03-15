@@ -1,5 +1,5 @@
-// ProjectForge - Cloudflare Pages Functions
-// API Routes using KV storage
+// ProjectForge - Skills API
+import { corsResponse, withCors } from './_cors';
 
 // Skills data (embedded for demo)
 const SKILLS_DATA = [
@@ -213,6 +213,11 @@ export async function onRequestGet(context: any) {
   }
   
   return new Response(JSON.stringify({ skills }), {
-    headers: { 'Content-Type': 'application/json' }
+    headers: withCors({ 'Content-Type': 'application/json' })
   });
+}
+
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }

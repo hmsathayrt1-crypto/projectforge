@@ -1,4 +1,5 @@
 // ProjectForge - Success Estimator API
+import { corsResponse, withCors } from '../_cors';
 
 const PROJECTS_DATA = [
   { id: 1, title: 'E-Commerce Platform', required_skills: ['JavaScript', 'React', 'Node.js', 'SQL', 'Docker'], team_size_min: 3, team_size_max: 5, estimated_duration_weeks: 16 },
@@ -13,6 +14,11 @@ const PROJECTS_DATA = [
   { id: 10, title: 'Blockchain Voting System', required_skills: ['JavaScript', 'Web Security', 'Cryptography', 'Solidity'], team_size_min: 3, team_size_max: 5, estimated_duration_weeks: 18 }
 ];
 
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
+}
+
 // POST /api/success/estimate
 export async function onRequestPost(context: any) {
   const authHeader = context.request.headers.get('Authorization');
@@ -20,7 +26,7 @@ export async function onRequestPost(context: any) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 
@@ -32,7 +38,7 @@ export async function onRequestPost(context: any) {
     if (!project) {
       return new Response(JSON.stringify({ error: 'Project not found' }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
 
@@ -123,13 +129,13 @@ export async function onRequestPost(context: any) {
       },
       recommendations
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Success estimate error:', error);
     return new Response(JSON.stringify({ error: 'Failed to estimate success' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 }

@@ -1,10 +1,11 @@
-// ProjectForge - Auth API (using KV)
-import { sha256 } from '@cloudflare/workers-workers/sha256';
+// ProjectForge - Auth Register API (using KV)
+import { corsResponse, withCors } from '../_cors';
 
 interface User {
   id: string;
   email: string;
   password_hash: string;
+  password_salt: string;
   full_name: string;
   university?: string;
   major?: string;
@@ -24,54 +25,44 @@ function generateUserId(): string {
   return 'user_' + generateToken().substring(0, 16);
 }
 
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+function generateSalt(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// GET /api/auth/me - Get current user
-export async function onRequestGet(context: any) {
-  const authHeader = context.request.headers.get('Authorization');
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-  
-  const token = authHeader.substring(7);
-  const kv = context.env.KV;
-  
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + salt);
   try {
-    const userData = await kv.get(`token:${token}`);
-    
-    if (!userData) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    const user = JSON.parse(userData);
-    delete user.password_hash;
-    
-    // Get user skills
-    const skillsData = await kv.get(`user_skills:${user.id}`);
-    const skills = skillsData ? JSON.parse(skillsData) : [];
-    
-    return new Response(JSON.stringify({ user, skills }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to get user' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      data,
+      { name: 'PBKDF2' },
+      false,
+      ['deriveBits']
+    );
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        salt: encoder.encode(salt),
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      256
+    );
+    return Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    // Fallback to SHA-256 if PBKDF2 fails (should not happen in Cloudflare Workers)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
+}
+
+// OPTIONS handler for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }
 
 // POST /api/auth/register
@@ -83,7 +74,14 @@ export async function onRequestPost(context: any) {
     if (!email || !password || !full_name) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    if (password.length < 6) {
+      return new Response(JSON.stringify({ error: 'Password must be at least 6 characters' }), {
+        status: 400,
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -94,13 +92,14 @@ export async function onRequestPost(context: any) {
     if (existingUser) {
       return new Response(JSON.stringify({ error: 'Email already registered' }), {
         status: 409,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
-    // Create user
+    // Create user with secure password hashing
     const userId = generateUserId();
-    const passwordHash = await hashPassword(password);
+    const salt = generateSalt();
+    const passwordHash = await hashPassword(password, salt);
     const token = generateToken();
     const tokenExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     
@@ -108,6 +107,7 @@ export async function onRequestPost(context: any) {
       id: userId,
       email,
       password_hash: passwordHash,
+      password_salt: salt,
       full_name,
       university: university || null,
       major: major || null,
@@ -123,20 +123,20 @@ export async function onRequestPost(context: any) {
     await kv.put(`token:${token}`, JSON.stringify(user));
     
     // Return user without password
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password_hash, password_salt, ...userWithoutPassword } = user;
     
     return new Response(JSON.stringify({
       success: true,
       user: userWithoutPassword,
       token
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Register error:', error);
     return new Response(JSON.stringify({ error: 'Registration failed' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 }

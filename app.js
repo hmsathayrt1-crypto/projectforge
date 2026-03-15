@@ -837,6 +837,8 @@ function populateSandboxProjects() {
         projectsData.map(p => `<option value="${p.id}">${p.title_ar || p.title}</option>`).join('');
 }
 
+let sandboxAbortController = null;
+
 async function handleSandboxProject(e) {
     const projectId = parseInt(e.target.value);
     if (!projectId) return;
@@ -850,6 +852,21 @@ async function generatePlan(projectId) {
         return;
     }
     
+    // Cancel any previous request
+    if (sandboxAbortController) {
+        sandboxAbortController.abort();
+    }
+    
+    // Create abort controller with 60s timeout
+    sandboxAbortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+        if (sandboxAbortController) {
+            sandboxAbortController.abort();
+            showToast('انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى.', 'error');
+            hideLoading();
+        }
+    }, 60000);
+    
     showLoading();
     
     try {
@@ -859,8 +876,11 @@ async function generatePlan(projectId) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ projectId })
+            body: JSON.stringify({ projectId }),
+            signal: sandboxAbortController.signal
         });
+        
+        clearTimeout(timeoutId);
         
         const data = await response.json();
         
@@ -874,13 +894,19 @@ async function generatePlan(projectId) {
             renderPlan(mockPlan);
         }
     } catch (error) {
-        console.error('Error generating plan:', error);
-        const project = projectsData.find(p => p.id === projectId) || getMockProjects()[0];
-        const mockPlan = generateMockPlan(project);
-        renderPlan(mockPlan);
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            console.log('Request aborted');
+        } else {
+            console.error('Error generating plan:', error);
+            const project = projectsData.find(p => p.id === projectId) || getMockProjects()[0];
+            const mockPlan = generateMockPlan(project);
+            renderPlan(mockPlan);
+        }
     }
     
     hideLoading();
+    sandboxAbortController = null;
 }
 
 function generateMockPlan(project) {
@@ -1066,23 +1092,55 @@ function renderPlan(plan) {
     if (aiAnalysis) {
         if (plan.ai_analysis) {
             // Convert markdown to HTML using marked
-            aiAnalysis.innerHTML = typeof marked !== 'undefined' ? marked.parse(plan.ai_analysis) : plan.ai_analysis;
+            let htmlContent = plan.ai_analysis;
+            try {
+                htmlContent = typeof marked !== 'undefined' ? marked.parse(plan.ai_analysis) : plan.ai_analysis;
+            } catch (e) {
+                console.warn('Markdown parse error:', e);
+            }
+            aiAnalysis.innerHTML = htmlContent;
             
-            // Render any mermaid diagrams
-            setTimeout(() => {
+            // Render any mermaid diagrams safely
+            setTimeout(async () => {
                 if (window.mermaid) {
-                    window.mermaid.run({
-                        querySelector: '#aiAnalysis .language-mermaid'
-                    }).catch(console.error);
-                    
-                    // Also support pre > code blocks that might just have 'mermaid' class
-                    window.mermaid.run({
-                        querySelector: '#aiAnalysis code.language-mermaid'
-                    }).catch(console.error);
+                    try {
+                        // Initialize mermaid if needed
+                        if (!window.mermaid.initialized) {
+                            await window.mermaid.initialize({ 
+                                startOnLoad: false, 
+                                theme: 'dark',
+                                securityLevel: 'loose',
+                                logLevel: 'error'
+                            });
+                            window.mermaid.initialized = true;
+                        }
+                        
+                        // Find all mermaid code blocks
+                        const mermaidBlocks = document.querySelectorAll('#aiAnalysis .language-mermaid, #aiAnalysis code.language-mermaid');
+                        for (const block of mermaidBlocks) {
+                            try {
+                                const code = block.textContent || block.innerText;
+                                // Validate basic mermaid syntax
+                                if (code && (code.includes('graph') || code.includes('flowchart') || code.includes('sequenceDiagram') || code.includes('classDiagram'))) {
+                                    const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+                                    const { svg } = await window.mermaid.render(id, code);
+                                    const pre = block.closest('pre') || block.parentElement;
+                                    if (pre) {
+                                        pre.outerHTML = `<div class="mermaid-diagram">${svg}</div>`;
+                                    }
+                                }
+                            } catch (parseError) {
+                                console.warn('Mermaid parse error, showing as code block:', parseError);
+                                // Keep as code block if parsing fails
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Mermaid initialization error:', e);
+                    }
                 }
-            }, 100);
+            }, 200);
         } else {
-            aiAnalysis.innerHTML = '<p>يتم الآن إضافة مفاتيح الذكاء الاصطناعي لإنشاء المخططات قريباً...</p>';
+            aiAnalysis.innerHTML = '<p class="info-message">لم يتم توليد تحليل AI لهذا المشروع بعد.</p>';
         }
     }
     

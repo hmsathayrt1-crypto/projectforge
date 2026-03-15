@@ -1,3 +1,30 @@
+# Dependencies
 node_modules/
+
+# Build artifacts
+.wrangler/
+dist/
+
+# Environment and secrets
+.env
+.env.*
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# QA artifacts (generated)
+qa-artifacts//
 
 qa-artifacts/

@@ -1,4 +1,5 @@
 // ProjectForge - Recommendations API
+import { corsResponse, withCors } from '../_cors';
 
 const PROJECTS_DATA = [
   { id: 1, title: 'E-Commerce Platform', title_ar: 'منصة تجارة إلكترونية', description: 'Build a full-featured e-commerce website', description_ar: 'بناء موقع تجارة إلكترونية متكامل', category: 'web', difficulty: 'intermediate', required_skills: ['JavaScript', 'React', 'Node.js', 'SQL', 'Docker'], estimated_duration_weeks: 16, team_size_min: 3, team_size_max: 5, tags: ['web', 'full-stack', 'business'] },
@@ -42,7 +43,7 @@ export async function onRequestGet(context: any) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized', needSurvey: true }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
   
@@ -55,7 +56,7 @@ export async function onRequestGet(context: any) {
     if (!userData) {
       return new Response(JSON.stringify({ error: 'Invalid token', needSurvey: true }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -66,7 +67,7 @@ export async function onRequestGet(context: any) {
     if (!skillsData) {
       return new Response(JSON.stringify({ error: 'Please complete the skills survey first', needSurvey: true }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -190,13 +191,18 @@ export async function onRequestGet(context: any) {
       recommendations: finalRecs,
       userSkills: userSkills
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Recommendations error:', error);
     return new Response(JSON.stringify({ error: 'Failed to generate recommendations' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
+}
+
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }

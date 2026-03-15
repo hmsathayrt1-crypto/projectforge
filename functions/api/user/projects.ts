@@ -1,15 +1,19 @@
 // ProjectForge - User Projects API (Save/Get user's saved projects)
+import { corsResponse, withCors } from '../_cors';
 
-// POST /api/user/projects - Save a project for user
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
+}
+
 // GET /api/user/projects - Get user's saved projects
-
 export async function onRequestGet(context: any) {
   const authHeader = context.request.headers.get('Authorization');
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 
@@ -21,7 +25,7 @@ export async function onRequestGet(context: any) {
     if (!userData) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -30,27 +34,25 @@ export async function onRequestGet(context: any) {
     const projects = projectsData ? JSON.parse(projectsData) : [];
     
     return new Response(JSON.stringify({ projects }), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Error fetching user projects:', error);
     return new Response(JSON.stringify({ error: 'Failed to get projects' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 }
 
+// POST /api/user/projects - Save a project for user
 export async function onRequestPost(context: any) {
   const authHeader = context.request.headers.get('Authorization');
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 
@@ -62,7 +64,7 @@ export async function onRequestPost(context: any) {
     if (!userData) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -73,7 +75,7 @@ export async function onRequestPost(context: any) {
     if (!projectId) {
       return new Response(JSON.stringify({ error: 'Project ID required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -98,26 +100,13 @@ export async function onRequestPost(context: any) {
     await kv.put(`user_projects:${user.id}`, JSON.stringify(projects));
     
     return new Response(JSON.stringify({ success: true, project: projectEntry }), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Error saving project:', error);
     return new Response(JSON.stringify({ error: 'Failed to save project' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
-  });
 }

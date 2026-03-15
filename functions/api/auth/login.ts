@@ -1,18 +1,53 @@
 // ProjectForge - Login API
-import { sha256 } from '@cloudflare/workers-workers/sha256';
+import { corsResponse, withCors } from '../_cors';
 
-async function hashPassword(password: string): Promise<string> {
+async function hashPassword(password: string, salt?: string): Promise<string> {
   const encoder = new TextEncoder();
+  
+  // New format: PBKDF2 with salt
+  if (salt) {
+    const data = encoder.encode(password + salt);
+    try {
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        data,
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits']
+      );
+      const derivedBits = await crypto.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: encoder.encode(salt),
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        256
+      );
+      return Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // Fallback
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  }
+  
+  // Legacy format: SHA-256 for backward compatibility
   const data = encoder.encode(password);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function generateToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// OPTIONS handler for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }
 
 // POST /api/auth/login
@@ -24,7 +59,7 @@ export async function onRequestPost(context: any) {
     if (!email || !password) {
       return new Response(JSON.stringify({ error: 'Missing email or password' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -35,7 +70,7 @@ export async function onRequestPost(context: any) {
     if (!userId) {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -44,17 +79,28 @@ export async function onRequestPost(context: any) {
     if (!userData) {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
     const user = JSON.parse(userData);
-    const passwordHash = await hashPassword(password);
     
-    if (user.password_hash !== passwordHash) {
+    // Verify password (support both old and new formats)
+    const salt = user.password_salt || '';
+    const passwordHash = await hashPassword(password, salt);
+    
+    // For users with old format (no salt), try legacy hash
+    let passwordValid = user.password_hash === passwordHash;
+    if (!passwordValid && !user.password_salt) {
+      // Try legacy SHA-256 for backward compatibility
+      const legacyHash = await hashPassword(password);
+      passwordValid = user.password_hash === legacyHash;
+    }
+    
+    if (!passwordValid) {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -70,20 +116,20 @@ export async function onRequestPost(context: any) {
     await kv.put(`token:${token}`, JSON.stringify(user));
     
     // Return user without password
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password_hash, password_salt, ...userWithoutPassword } = user;
     
     return new Response(JSON.stringify({
       success: true,
       user: userWithoutPassword,
       token
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Login error:', error);
     return new Response(JSON.stringify({ error: 'Login failed' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 }

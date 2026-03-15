@@ -1,4 +1,5 @@
 // ProjectForge - Projects API
+import { corsResponse, withCors } from '../_cors';
 
 const PROJECTS_DATA = [
   {
@@ -165,6 +166,11 @@ export async function onRequestGet(context: any) {
   const paginated = projects.slice(offset, offset + limit);
   
   return new Response(JSON.stringify({ projects: paginated }), {
-    headers: { 'Content-Type': 'application/json' }
+    headers: withCors({ 'Content-Type': 'application/json' })
   });
+}
+
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }

@@ -1,4 +1,5 @@
 // ProjectForge - Skills Survey API
+import { corsResponse, withCors } from '../_cors';
 
 const SKILLS_DATA = [
   { id: 1, name: 'Python', category: 'programming', description: 'Python programming language', weight: 1.5 },
@@ -67,7 +68,7 @@ export async function onRequestPost(context: any) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
   
@@ -80,7 +81,7 @@ export async function onRequestPost(context: any) {
     if (!userData) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: withCors({ 'Content-Type': 'application/json' })
       });
     }
     
@@ -92,28 +93,18 @@ export async function onRequestPost(context: any) {
     await kv.put(`user_skills:${user.id}`, JSON.stringify(skills));
     
     return new Response(JSON.stringify({ success: true, message: 'Skills saved successfully' }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   } catch (error) {
     console.error('Survey error:', error);
     return new Response(JSON.stringify({ error: 'Failed to save survey' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: withCors({ 'Content-Type': 'application/json' })
     });
   }
 }
 
-// GET /api/skills
-export async function onRequestGet(context: any) {
-  const { searchParams } = new URL(context.request.url);
-  const category = searchParams.get('category');
-  
-  let skills = SKILLS_DATA;
-  if (category) {
-    skills = skills.filter(s => s.category === category);
-  }
-  
-  return new Response(JSON.stringify({ skills }), {
-    headers: { 'Content-Type': 'application/json' }
-  });
+// OPTIONS for CORS
+export async function onRequestOptions() {
+  return corsResponse();
 }
