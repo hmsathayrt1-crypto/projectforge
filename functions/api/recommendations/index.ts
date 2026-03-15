@@ -116,9 +116,78 @@ export async function onRequestGet(context: any) {
     
     // Sort by score
     recommendations.sort((a, b) => b.score - a.score);
+    let topRecs = recommendations.slice(0, 5);
+
+    // AI Dynamic Recommendation
+    let aiRecs = [];
+    if (context.env.NANOGPT_API_KEY) {
+        try {
+            const topSkillNames = userSkills.filter((s: any) => s.level >= 2).map((s: any) => {
+                const skillNames = ['Python', 'JavaScript', 'Java', 'C++', 'C#', 'PHP', 'Swift', 'Kotlin', 'React', 'Vue', 'Angular', 'Node.js', 'Django', 'Flask', 'HTML/CSS', 'Flutter', 'React Native', 'Android Native', 'iOS Native', 'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision', 'TensorFlow', 'PyTorch', 'SQL', 'MongoDB', 'PostgreSQL', 'Redis', 'Docker', 'Kubernetes', 'CI/CD', 'AWS', 'Cloudflare', 'Web Security', 'Cryptography', 'Penetration Testing', 'Arduino', 'Raspberry Pi', 'Embedded Systems', 'Project Management', 'Technical Writing', 'Presentation', 'Team Leadership'];
+                return skillNames[s.skill_id - 1] || '';
+            }).filter(Boolean);
+
+            const prompt = `أنت خبير أكاديمي تساعد طلاب هندسة البرمجيات. بناءً على مهارات الطالب التالية: ${topSkillNames.join(', ')}
+اقترح فكرة مشروع تخرج **واحدة** مبتكرة جداً وحديثة.
+يجب أن ترجع الرد بصيغة JSON فقط بهذا الشكل:
+{
+  "title": "اسم المشروع بالإنجليزي",
+  "title_ar": "اسم المشروع بالعربي",
+  "description": "وصف قصير بالإنجليزي",
+  "description_ar": "وصف قصير بالعربي",
+  "category": "web",
+  "difficulty": "advanced",
+  "required_skills": ["Skill1", "Skill2"],
+  "estimated_duration_weeks": 14,
+  "team_size_min": 2,
+  "team_size_max": 4,
+  "tags": ["ai", "innovation"]
+}`;
+
+            const aiResponse = await fetch('https://nano-gpt.com/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${context.env.NANOGPT_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'moonshotai/kimi-k2.5',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.8
+                })
+            });
+
+            if (aiResponse.ok) {
+                const aiData = await aiResponse.json();
+                const content = aiData.choices?.[0]?.message?.content || "{}";
+                const match = content.match(/\{[\s\S]*\}/);
+                if (match) {
+                    const dynamicProject = JSON.parse(match[0]);
+                    dynamicProject.id = Math.floor(Math.random() * 10000) + 100; // Random ID for dynamic project
+                    
+                    const reqSkills = dynamicProject.required_skills || [];
+                    const matchedSkills = reqSkills.filter((s: string) => topSkillNames.includes(s));
+                    const missingSkills = reqSkills.filter((s: string) => !topSkillNames.includes(s));
+                    
+                    aiRecs.push({
+                        project: dynamicProject,
+                        score: 98,
+                        matchPercent: Math.round((matchedSkills.length / Math.max(reqSkills.length, 1)) * 100),
+                        matchedSkills,
+                        missingSkills,
+                        reasons: ['✨ مشروع مبتكر مقترح خصيصاً لك بواسطة الذكاء الاصطناعي بناءً على مهاراتك!']
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("AI recommendation failed", e);
+        }
+    }
+
+    const finalRecs = [...aiRecs, ...topRecs].slice(0, 10);
     
     return new Response(JSON.stringify({
-      recommendations: recommendations.slice(0, 10),
+      recommendations: finalRecs,
       userSkills: userSkills
     }), {
       headers: { 'Content-Type': 'application/json' }

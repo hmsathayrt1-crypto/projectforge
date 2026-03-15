@@ -201,11 +201,16 @@ export async function onRequestPost(context: any) {
           const aiData = await aiResponse.json();
           ai_analysis = aiData.choices?.[0]?.message?.content || "";
         } else {
-          console.warn('AI API Error:', await aiResponse.text());
+          const errText = await aiResponse.text();
+          console.warn('AI API Error:', errText);
+          ai_analysis = "خطأ في الاتصال بنموذج الذكاء الاصطناعي: " + errText;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('AI call failed:', err);
+        ai_analysis = "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: " + err.message;
       }
+    } else {
+      ai_analysis = "لم يتم تكوين مفتاح الذكاء الاصطناعي في الخادم.";
     }
 
     const plan = {
