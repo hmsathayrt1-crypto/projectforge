@@ -1056,10 +1056,35 @@ function renderPlan(plan) {
         <h4><i class="fas fa-tools"></i> الأدوات المقترحة</h4>
         ${plan.resources.map(r => `
             <div class="resource-category">
-                <p>${r.items.join(' • ')}</p>
+                <p>${r.items.map(item => typeof item === 'string' ? item : item.name).join(' • ')}</p>
             </div>
         `).join('')}
     `;
+    
+    // AI Analysis
+    const aiAnalysis = document.getElementById('aiAnalysis');
+    if (aiAnalysis) {
+        if (plan.ai_analysis) {
+            // Convert markdown to HTML using marked
+            aiAnalysis.innerHTML = typeof marked !== 'undefined' ? marked.parse(plan.ai_analysis) : plan.ai_analysis;
+            
+            // Render any mermaid diagrams
+            setTimeout(() => {
+                if (window.mermaid) {
+                    window.mermaid.run({
+                        querySelector: '#aiAnalysis .language-mermaid'
+                    }).catch(console.error);
+                    
+                    // Also support pre > code blocks that might just have 'mermaid' class
+                    window.mermaid.run({
+                        querySelector: '#aiAnalysis code.language-mermaid'
+                    }).catch(console.error);
+                }
+            }, 100);
+        } else {
+            aiAnalysis.innerHTML = '<p>يتم الآن إضافة مفاتيح الذكاء الاصطناعي لإنشاء المخططات قريباً...</p>';
+        }
+    }
     
     navigateTo('sandbox');
 }
