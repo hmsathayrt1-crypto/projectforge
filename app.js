@@ -64,8 +64,8 @@ async function initApp() {
 
 function setupEventListeners() {
     // Auth modal
-    document.getElementById('loginBtn').addEventListener('click', () => showModal('authModal'));
-    document.getElementById('closeAuth').addEventListener('click', () => hideModal('authModal'));
+    document.getElementById('loginBtn')?.addEventListener('click', () => showModal('authModal'));
+    document.getElementById('closeAuth')?.addEventListener('click', () => hideModal('authModal'));
     
     // Auth tabs
     document.querySelectorAll('.auth-tab').forEach(tab => {
@@ -76,8 +76,8 @@ function setupEventListeners() {
     });
     
     // Login form
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
+    document.getElementById('registerForm')?.addEventListener('submit', handleRegister);
     
     // Navigation
     document.querySelectorAll('.nav-links a[data-page]').forEach(link => {
@@ -89,36 +89,36 @@ function setupEventListeners() {
     });
     
     // Theme toggle
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
     
     // Home page buttons
-    document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('startBtn')?.addEventListener('click', () => {
         if (currentUser) {
             navigateTo('survey');
         } else {
             showModal('authModal');
         }
     });
-    document.getElementById('exploreBtn').addEventListener('click', () => navigateTo('projects'));
+    document.getElementById('exploreBtn')?.addEventListener('click', () => navigateTo('projects'));
     
     // Survey navigation
-    document.getElementById('nextCategory').addEventListener('click', nextCategory);
-    document.getElementById('prevCategory').addEventListener('click', prevCategory);
-    document.getElementById('submitSurvey').addEventListener('click', submitSurvey);
-    document.getElementById('goToSurvey').addEventListener('click', () => navigateTo('survey'));
+    document.getElementById('nextCategory')?.addEventListener('click', nextCategory);
+    document.getElementById('prevCategory')?.addEventListener('click', prevCategory);
+    document.getElementById('submitSurvey')?.addEventListener('click', submitSurvey);
+    document.getElementById('goToSurvey')?.addEventListener('click', () => navigateTo('survey'));
     
     // Sandbox
-    document.getElementById('sandboxProjectSelect').addEventListener('change', handleSandboxProject);
+    document.getElementById('sandboxProjectSelect')?.addEventListener('change', handleSandboxProject);
     
     // Projects
-    document.getElementById('categoryFilter').addEventListener('change', filterProjects);
-    document.getElementById('difficultyFilter').addEventListener('change', filterProjects);
+    document.getElementById('categoryFilter')?.addEventListener('change', filterProjects);
+    document.getElementById('difficultyFilter')?.addEventListener('change', filterProjects);
     
     // Success estimator
-    document.getElementById('estimateSuccess').addEventListener('click', estimateSuccess);
+    document.getElementById('estimateSuccess')?.addEventListener('click', estimateSuccess);
     
     // Team matching
-    document.getElementById('teamProjectSelect').addEventListener('change', findTeamMatches);
+    document.getElementById('teamProjectSelect')?.addEventListener('change', findTeamMatches);
     
     // Logout
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
@@ -288,8 +288,11 @@ function handleLogout() {
 // ============================================
 
 function navigateTo(page) {
-    // Hide all pages
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    // Ensure SPA pages are controlled only by .active (not lingering .hidden class)
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('hidden');
+        p.classList.remove('active');
+    });
     
     // Show target page
     const targetPage = document.getElementById(`${page}Page`);
