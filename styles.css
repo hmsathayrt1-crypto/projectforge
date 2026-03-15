@@ -1449,17 +1449,90 @@ body::before {
 }
 
 @media (max-width: 768px) {
-    .nav-links {
-        display: none;
+    .main-content { padding: 16px 12px; }
+    .survey-container, .sandbox-container, .success-form, .success-result, .profile-container, .modal-content, .empty-state {
+        padding: 16px;
     }
-    
+    .skill-item { padding: 16px 12px; }
+    .recommendation-card { padding: 16px; }
+    .project-card { padding: 16px; }
+    .hero { padding: 32px 0; }
+    .hero-content h1 { font-size: 32px; }
+    .page-header h1 { font-size: 24px; }
+
+    /* Fix Mobile Navigation */
+    .top-nav {
+        flex-direction: column;
+        padding: 10px;
+        gap: 12px;
+    }
+    .nav-brand {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .nav-links {
+        display: flex;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 5px;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+    }
+    .nav-links a {
+        white-space: nowrap;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    .nav-user {
+        width: 100%;
+        justify-content: space-between;
+    }
+
     .stats {
         flex-direction: column;
         gap: 24px;
     }
     
-    .survey-ratings {
+    .skill-ratings {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .rating-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+    
+    .hero-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .survey-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .survey-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .projects-filters {
+        flex-direction: column;
+    }
+    .projects-filters select {
+        width: 100%;
+    }
+    
+    .sandbox-select, .sandbox-container select, .success-form select {
+        width: 100%;
     }
 }
 
