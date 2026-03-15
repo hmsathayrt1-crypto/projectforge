@@ -710,7 +710,7 @@ function filterProjects() {
     renderProjects();
 }
 
-functionshowProjectDetails(projectId) {
+function showProjectDetails(projectId) {
     const project = projectsData.find(p => p.id === projectId);
     if (!project) return;
     
